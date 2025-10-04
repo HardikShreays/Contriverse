@@ -3,7 +3,7 @@
 > A Milestone Celebration Dashboard that gamifies open-source contributions through achievements, badges, progress tracking, and automated community shoutouts - empowering recognition, motivation, and accountability in the open-source ecosystem.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white)](https://postgresql.org/)
@@ -46,7 +46,7 @@ Contriverse transforms open-source contribution tracking into an engaging, gamif
 
 ### Frontend
 - **React 18** - Modern UI framework with hooks
-- **TypeScript** - Type-safe development
+- **JavaScript (ES6+)** - Modern JavaScript development
 - **Tailwind CSS** - Utility-first styling
 - **Recharts** - Data visualization and analytics
 - **React Router** - Client-side routing
@@ -55,7 +55,7 @@ Contriverse transforms open-source contribution tracking into an engaging, gamif
 ### Backend
 - **Node.js** - Runtime environment
 - **Express.js** - Web framework
-- **TypeScript** - Type-safe backend development
+- **JavaScript (ES6+)** - Modern JavaScript development
 - **Prisma** - Modern database ORM
 - **PostgreSQL** - Primary database
 - **JWT** - Authentication tokens
@@ -333,7 +333,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ### Code Standards
 
-- TypeScript for type safety
+- JavaScript (ES6+) for modern development
 - ESLint for code quality
 - Prettier for code formatting
 - Conventional commits for commit messages
