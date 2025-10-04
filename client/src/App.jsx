@@ -38,35 +38,43 @@ const AppLoader = () => {
   }
 
   return (
-    <div 
-      className="min-h-screen w-full transition-colors duration-200"
-      style={{ backgroundColor: isDarkMode ? '#5c899d' : '#f9fafb' }}
-    >
-      <Header />
-      
-      <main className="w-full">
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login/:userType" element={<LoginPage />} />
-          <Route path="/logout" element={<LogoutPage />} />
-          
-          {/* Protected Routes */}
-          <Route 
-            path="/dashboard/:userType" 
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Catch all route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-      
-      <Footer />
+    <div className="min-h-screen w-full">
+      <Routes>
+        {/* Landing page without header/footer for full-screen experience */}
+        <Route path="/" element={<LandingPage />} />
+        
+        {/* Other routes with header/footer */}
+        <Route path="/*" element={
+          <div 
+            className="min-h-screen w-full transition-colors duration-200"
+            style={{ backgroundColor: isDarkMode ? '#5c899d' : '#f9fafb' }}
+          >
+            <Header />
+            
+            <main className="w-full">
+              <Routes>
+                <Route path="/login/:userType" element={<LoginPage />} />
+                <Route path="/logout" element={<LogoutPage />} />
+                
+                {/* Protected Routes */}
+                <Route 
+                  path="/dashboard/:userType" 
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Catch all route */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
+            
+            <Footer />
+          </div>
+        } />
+      </Routes>
     </div>
   );
 };

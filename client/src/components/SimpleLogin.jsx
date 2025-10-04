@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Github, Loader2 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SimpleLogin = ({ onLoginSuccess, onLoginError }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { isDarkMode } = useTheme();
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -27,7 +29,7 @@ const SimpleLogin = ({ onLoginSuccess, onLoginError }) => {
       localStorage.setItem('user', JSON.stringify(mockUser));
 
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       onLoginSuccess && onLoginSuccess({ user: mockUser, accessToken: mockToken });
 
@@ -42,29 +44,83 @@ const SimpleLogin = ({ onLoginSuccess, onLoginError }) => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-4">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        <span>Logging in...</span>
+      <div className="flex flex-col items-center justify-center p-8">
+        <div className="relative">
+          <div 
+            className="w-16 h-16 rounded-full border-4 border-transparent animate-spin"
+            style={{ 
+              borderTopColor: isDarkMode ? '#667eea' : '#667eea',
+              borderRightColor: isDarkMode ? '#764ba2' : '#764ba2'
+            }}
+          />
+          <div 
+            className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent animate-spin"
+            style={{ 
+              borderBottomColor: isDarkMode ? '#f093fb' : '#f093fb',
+              borderLeftColor: isDarkMode ? '#f5576c' : '#f5576c',
+              animationDirection: 'reverse',
+              animationDuration: '1.5s'
+            }}
+          />
+        </div>
+        <p 
+          className="mt-4 text-sm font-medium animate-pulse-soft"
+          style={{ color: isDarkMode ? '#cccccc' : '#666666' }}
+        >
+          Logging in...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full">
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
+        <div 
+          className="mb-6 p-4 rounded-2xl border backdrop-blur-sm animate-slideInFromLeft"
+          style={{ 
+            backgroundColor: isDarkMode 
+              ? 'rgba(239, 68, 68, 0.1)' 
+              : 'rgba(254, 226, 226, 0.8)',
+            borderColor: isDarkMode 
+              ? 'rgba(239, 68, 68, 0.3)' 
+              : 'rgba(239, 68, 68, 0.2)',
+            color: isDarkMode ? '#fca5a5' : '#dc2626'
+          }}
+        >
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse" />
+            <span className="text-sm font-medium">{error}</span>
+          </div>
         </div>
       )}
       
       <button
         onClick={handleLogin}
         disabled={isLoading}
-        className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="group w-full flex items-center justify-center px-6 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
+        }}
       >
-        <Github className="w-5 h-5 mr-2" />
-        {isLoading ? 'Logging in...' : 'Login with GitHub (Demo)'}
+        {/* Shimmer effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transition-opacity duration-300 transform -skew-x-12 group-hover:translate-x-full" />
+        
+        <div className="relative z-10 flex items-center">
+          <Github className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform duration-300" />
+          <span>Login with GitHub (Demo)</span>
+        </div>
       </button>
+
+      {/* Additional info */}
+      <p 
+        className="mt-4 text-xs text-center leading-relaxed"
+        style={{ color: isDarkMode ? '#999999' : '#666666' }}
+      >
+        This is a demo login. In production, this would authenticate with GitHub OAuth.
+      </p>
     </div>
   );
 };

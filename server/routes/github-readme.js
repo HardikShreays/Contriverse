@@ -1,0 +1,416 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../lib/database');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
+
+// Get contributor stats for GitHub README
+router.get('/stats/:username', optionalAuth, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { format = 'svg', theme = 'default', show_badges = 'true', show_stats = 'true' } = req.query;
+    
+    // Find contributor by username
+    const contributor = Array.from(db.contributors.values())
+      .find(contrib => contrib.username === username);
+    
+    if (!contributor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Contributor not found',
+        message: 'Contributor does not exist'
+      });
+    }
+
+    const badges = contributor.badges
+      .map(badgeId => db.badges.get(badgeId))
+      .filter(Boolean);
+
+    const achievements = db.getContributorAchievements(contributor.id);
+
+    if (format === 'svg') {
+      // Generate SVG stats card
+      const svg = generateStatsSVG(contributor, badges, achievements, theme);
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(svg);
+    }
+
+    // Return JSON data
+    res.json({
+      success: true,
+      data: {
+        contributor: {
+          id: contributor.id,
+          username: contributor.username,
+          name: contributor.name,
+          avatar: contributor.avatar,
+          githubUrl: contributor.githubUrl
+        },
+        stats: contributor.stats,
+        badges: badges.map(badge => ({
+          id: badge.id,
+          name: badge.name,
+          description: badge.description,
+          icon: badge.icon,
+          color: badge.color,
+          points: badge.points
+        })),
+        achievements: achievements.map(achievement => ({
+          id: achievement.id,
+          type: achievement.type,
+          title: achievement.title,
+          description: achievement.description,
+          points: achievement.points,
+          createdAt: achievement.createdAt
+        })),
+        organizations: contributor.organizations.map(orgId => {
+          const org = db.getOrganization(orgId);
+          return org ? {
+            id: org.id,
+            name: org.name,
+            githubOrg: org.githubOrg
+          } : null;
+        }).filter(Boolean)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get GitHub README Stats Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get stats',
+      message: error.message
+    });
+  }
+});
+
+// Generate SVG stats card
+function generateStatsSVG(contributor, badges, achievements, theme) {
+  const colors = getThemeColors(theme);
+  const stats = contributor.stats;
+  
+  // Calculate badge display
+  const badgeDisplay = badges.slice(0, 6).map(badge => badge.icon).join(' ');
+  
+  // Calculate level progress
+  const levelProgress = calculateLevelProgress(stats.points);
+  
+  const svg = `
+    <svg width="495" height="195" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${colors.primary};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${colors.secondary};stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      
+      <!-- Background -->
+      <rect width="495" height="195" fill="${colors.background}" rx="8"/>
+      
+      <!-- Header -->
+      <rect width="495" height="40" fill="url(#gradient)" rx="8"/>
+      <text x="20" y="25" fill="${colors.text}" font-family="Arial, sans-serif" font-size="16" font-weight="bold">
+        ${contributor.username}'s Contribution Stats
+      </text>
+      
+      <!-- Avatar -->
+      <circle cx="60" cy="80" r="25" fill="${colors.accent}"/>
+      <text x="60" y="87" text-anchor="middle" fill="${colors.text}" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+        ${contributor.username.charAt(0).toUpperCase()}
+      </text>
+      
+      <!-- Stats Grid -->
+      <g transform="translate(100, 60)">
+        <!-- Level -->
+        <text x="0" y="20" fill="${colors.text}" font-family="Arial, sans-serif" font-size="14" font-weight="bold">
+          Level ${stats.level}
+        </text>
+        <rect x="0" y="25" width="200" height="8" fill="${colors.border}" rx="4"/>
+        <rect x="0" y="25" width="${levelProgress * 2}" height="8" fill="${colors.primary}" rx="4"/>
+        
+        <!-- Points -->
+        <text x="0" y="50" fill="${colors.text}" font-family="Arial, sans-serif" font-size="12">
+          ${stats.points} Points
+        </text>
+        
+        <!-- PRs -->
+        <text x="0" y="70" fill="${colors.text}" font-family="Arial, sans-serif" font-size="12">
+          ${stats.totalPRs} PRs Merged
+        </text>
+        
+        <!-- Issues -->
+        <text x="0" y="90" fill="${colors.text}" font-family="Arial, sans-serif" font-size="12">
+          ${stats.totalIssues} Issues Solved
+        </text>
+      </g>
+      
+      <!-- Badges -->
+      <g transform="translate(320, 60)">
+        <text x="0" y="20" fill="${colors.text}" font-family="Arial, sans-serif" font-size="14" font-weight="bold">
+          Badges
+        </text>
+        <text x="0" y="40" fill="${colors.text}" font-family="Arial, sans-serif" font-size="16">
+          ${badgeDisplay}
+        </text>
+        <text x="0" y="60" fill="${colors.textSecondary}" font-family="Arial, sans-serif" font-size="10">
+          ${badges.length} badges earned
+        </text>
+      </g>
+      
+      <!-- Footer -->
+      <text x="20" y="180" fill="${colors.textSecondary}" font-family="Arial, sans-serif" font-size="10">
+        Generated by Contriverse • Last updated: ${new Date().toLocaleDateString()}
+      </text>
+    </svg>
+  `;
+  
+  return svg;
+}
+
+// Get theme colors
+function getThemeColors(theme) {
+  const themes = {
+    default: {
+      background: '#ffffff',
+      primary: '#0366d6',
+      secondary: '#28a745',
+      accent: '#f1f8ff',
+      text: '#24292e',
+      textSecondary: '#586069',
+      border: '#e1e4e8'
+    },
+    dark: {
+      background: '#0d1117',
+      primary: '#58a6ff',
+      secondary: '#3fb950',
+      accent: '#161b22',
+      text: '#f0f6fc',
+      textSecondary: '#8b949e',
+      border: '#30363d'
+    },
+    light: {
+      background: '#f6f8fa',
+      primary: '#0969da',
+      secondary: '#1a7f37',
+      accent: '#dbeafe',
+      text: '#1f2328',
+      textSecondary: '#656d76',
+      border: '#d0d7de'
+    }
+  };
+  
+  return themes[theme] || themes.default;
+}
+
+// Calculate level progress
+function calculateLevelProgress(points) {
+  if (points >= 1000) return 100;
+  if (points >= 500) return 80;
+  if (points >= 250) return 60;
+  if (points >= 100) return 40;
+  if (points >= 50) return 20;
+  return 10;
+}
+
+// Get contributor's GitHub profile integration
+router.get('/profile/:username', optionalAuth, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { include_stats = 'true' } = req.query;
+    
+    const contributor = Array.from(db.contributors.values())
+      .find(contrib => contrib.username === username);
+    
+    if (!contributor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Contributor not found',
+        message: 'Contributor does not exist'
+      });
+    }
+
+    const badges = contributor.badges
+      .map(badgeId => db.badges.get(badgeId))
+      .filter(Boolean);
+
+    const achievements = db.getContributorAchievements(contributor.id);
+
+    // Generate markdown for GitHub profile
+    const markdown = generateProfileMarkdown(contributor, badges, achievements, include_stats === 'true');
+
+    res.json({
+      success: true,
+      data: {
+        markdown,
+        contributor: {
+          id: contributor.id,
+          username: contributor.username,
+          name: contributor.name,
+          avatar: contributor.avatar,
+          githubUrl: contributor.githubUrl
+        },
+        stats: contributor.stats,
+        badges,
+        achievements
+      }
+    });
+
+  } catch (error) {
+    console.error('Get Profile Markdown Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get profile markdown',
+      message: error.message
+    });
+  }
+});
+
+// Generate markdown for GitHub profile
+function generateProfileMarkdown(contributor, badges, achievements, includeStats) {
+  let markdown = `# ${contributor.name || contributor.username}\n\n`;
+  
+  if (includeStats) {
+    markdown += `## 📊 Contribution Stats\n\n`;
+    markdown += `- **Level:** ${contributor.stats.level}\n`;
+    markdown += `- **Points:** ${contributor.stats.points}\n`;
+    markdown += `- **PRs Merged:** ${contributor.stats.totalPRs}\n`;
+    markdown += `- **Issues Solved:** ${contributor.stats.totalIssues}\n`;
+    markdown += `- **Total Stars:** ${contributor.stats.totalStars}\n`;
+    markdown += `- **Active Days:** ${contributor.stats.activeDays}\n\n`;
+  }
+  
+  if (badges.length > 0) {
+    markdown += `## 🏆 Badges\n\n`;
+    badges.forEach(badge => {
+      markdown += `- ${badge.icon} **${badge.name}** - ${badge.description}\n`;
+    });
+    markdown += `\n`;
+  }
+  
+  if (achievements.length > 0) {
+    markdown += `## 🎯 Recent Achievements\n\n`;
+    achievements.slice(0, 5).forEach(achievement => {
+      markdown += `- **${achievement.title}** - ${achievement.description} (+${achievement.points} points)\n`;
+    });
+    markdown += `\n`;
+  }
+  
+  markdown += `---\n\n`;
+  markdown += `*Stats powered by [Contriverse](https://contriverse.com)*\n`;
+  
+  return markdown;
+}
+
+// Get organization stats for README
+router.get('/organization/:orgId/stats', optionalAuth, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+    const { format = 'svg', theme = 'default' } = req.query;
+    
+    const organization = db.getOrganization(orgId);
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        error: 'Organization not found',
+        message: 'Organization does not exist'
+      });
+    }
+
+    const stats = db.getOrganizationStats(orgId);
+    const leaderboard = db.getOrganizationLeaderboard(orgId, 5);
+
+    if (format === 'svg') {
+      const svg = generateOrgStatsSVG(organization, stats, leaderboard, theme);
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(svg);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        organization: {
+          id: organization.id,
+          name: organization.name,
+          githubOrg: organization.githubOrg
+        },
+        stats,
+        leaderboard
+      }
+    });
+
+  } catch (error) {
+    console.error('Get Organization Stats Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get organization stats',
+      message: error.message
+    });
+  }
+});
+
+// Generate organization stats SVG
+function generateOrgStatsSVG(organization, stats, leaderboard, theme) {
+  const colors = getThemeColors(theme);
+  
+  const svg = `
+    <svg width="495" height="195" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${colors.primary};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${colors.secondary};stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      
+      <!-- Background -->
+      <rect width="495" height="195" fill="${colors.background}" rx="8"/>
+      
+      <!-- Header -->
+      <rect width="495" height="40" fill="url(#gradient)" rx="8"/>
+      <text x="20" y="25" fill="${colors.text}" font-family="Arial, sans-serif" font-size="16" font-weight="bold">
+        ${organization.name} - Contribution Stats
+      </text>
+      
+      <!-- Stats -->
+      <g transform="translate(20, 60)">
+        <text x="0" y="20" fill="${colors.text}" font-family="Arial, sans-serif" font-size="14" font-weight="bold">
+          Organization Overview
+        </text>
+        <text x="0" y="40" fill="${colors.text}" font-family="Arial, sans-serif" font-size="12">
+          ${stats.totalContributors} Contributors
+        </text>
+        <text x="0" y="60" fill="${colors.text}" font-family="Arial, sans-serif" font-size="12">
+          ${stats.totalPRs} PRs Merged
+        </text>
+        <text x="0" y="80" fill="${colors.text}" font-family="Arial, sans-serif" font-size="12">
+          ${stats.totalIssues} Issues Solved
+        </text>
+        <text x="0" y="100" fill="${colors.text}" font-family="Arial, sans-serif" font-size="12">
+          ${stats.totalPoints} Total Points
+        </text>
+      </g>
+      
+      <!-- Top Contributors -->
+      <g transform="translate(250, 60)">
+        <text x="0" y="20" fill="${colors.text}" font-family="Arial, sans-serif" font-size="14" font-weight="bold">
+          Top Contributors
+        </text>
+        ${leaderboard.slice(0, 3).map((contrib, index) => `
+          <text x="0" y="${40 + index * 20}" fill="${colors.text}" font-family="Arial, sans-serif" font-size="10">
+            ${index + 1}. ${contrib.contributor.username} (${contrib.stats.points} pts)
+          </text>
+        `).join('')}
+      </g>
+      
+      <!-- Footer -->
+      <text x="20" y="180" fill="${colors.textSecondary}" font-family="Arial, sans-serif" font-size="10">
+        Generated by Contriverse • Last updated: ${new Date().toLocaleDateString()}
+      </text>
+    </svg>
+  `;
+  
+  return svg;
+}
+
+module.exports = router;
+

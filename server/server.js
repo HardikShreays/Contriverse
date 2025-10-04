@@ -15,10 +15,22 @@ app.use(express.json());
 // Import routes
 const githubRoutes = require('./routes/github');
 const authRoutes = require('./routes/auth');
+const organizationRoutes = require('./routes/organizations');
+const achievementRoutes = require('./routes/achievements');
+const notificationRoutes = require('./routes/notifications');
+const botRoutes = require('./routes/bots');
+const githubReadmeRoutes = require('./routes/github-readme');
+const achievementTrackingRoutes = require('./routes/achievement-tracking');
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
+app.use('/api/organizations', organizationRoutes);
+app.use('/api/achievements', achievementRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/bots', botRoutes);
+app.use('/api/readme', githubReadmeRoutes);
+app.use('/api/tracking', achievementTrackingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
