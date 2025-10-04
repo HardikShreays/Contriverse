@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -12,23 +13,38 @@ import LogoutPage from './pages/LogoutPage';
 // Loading component for app initialization
 const AppLoader = () => {
   const { loading } = useAuth();
+  const { isDarkMode } = useTheme();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div 
+        className="min-h-screen flex items-center justify-center transition-colors duration-200"
+        style={{ backgroundColor: isDarkMode ? '#5c899d' : '#f9fafb' }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Contriverse...</p>
+          <div 
+            className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+            style={{ borderColor: isDarkMode ? '#fffcef' : '#5c899d' }}
+          ></div>
+          <p 
+            className="transition-colors duration-200"
+            style={{ color: isDarkMode ? '#fffcef' : '#6b7280' }}
+          >
+            Loading Contriverse...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div 
+      className="min-h-screen w-full transition-colors duration-200"
+      style={{ backgroundColor: isDarkMode ? '#5c899d' : '#f9fafb' }}
+    >
       <Header />
       
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="w-full">
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
@@ -58,9 +74,11 @@ const AppLoader = () => {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppLoader />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppLoader />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
