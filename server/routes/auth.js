@@ -6,6 +6,12 @@ const { generateToken, generateRefreshToken } = require('../middleware/auth');
 // In-memory user store (replace with database in production)
 const users = new Map();
 
+// GitHub OAuth redirect URL
+router.get('/github', (req, res) => {
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(`http://localhost:3000/callback`)}&scope=user:email&state=${Math.random().toString(36).substring(7)}`;
+  res.redirect(githubAuthUrl);
+});
+
 // GitHub OAuth callback
 router.post('/github', async (req, res) => {
   try {
@@ -20,6 +26,7 @@ router.post('/github', async (req, res) => {
     }
 
     // Exchange code for access token
+    console.log('Exchanging code for access token...');
     const tokenResponse = await axios.post('https://github.com/login/oauth/access_token', {
       client_id: process.env.GITHUB_CLIENT_ID,
       client_secret: process.env.GITHUB_CLIENT_SECRET,
@@ -29,6 +36,9 @@ router.post('/github', async (req, res) => {
         'Accept': 'application/json'
       }
     });
+
+    console.log('GitHub token response status:', tokenResponse.status);
+    console.log('GitHub token response data:', tokenResponse.data);
 
     const { access_token } = tokenResponse.data;
 
@@ -93,6 +103,7 @@ router.post('/github', async (req, res) => {
 
   } catch (error) {
     console.error('GitHub OAuth Error:', error.message);
+    console.error('Error response:', error.response?.data);
     res.status(500).json({
       success: false,
       error: 'Authentication failed',
@@ -100,6 +111,7 @@ router.post('/github', async (req, res) => {
     });
   }
 });
+
 
 // Refresh token endpoint
 router.post('/refresh', async (req, res) => {

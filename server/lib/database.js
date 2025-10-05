@@ -11,6 +11,7 @@ class Database {
     this.timeBoundTasks = new Map();
     this.notifications = new Map();
     this.leaderboards = new Map();
+    this.ratings = new Map();
     
     this.initializeDefaultData();
   }
@@ -131,10 +132,13 @@ class Database {
         streak: 0,
         level: 1,
         points: 0,
+        averageRating: 0,
+        ratingLevel: 'no-data',
         joinDate: new Date().toISOString()
       },
       timeBoundTasks: [],
-      notifications: []
+      notifications: [],
+      ratings: []
     };
     this.contributors.set(contributor.id, contributor);
     return contributor;

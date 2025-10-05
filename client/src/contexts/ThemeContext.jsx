@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const ThemeContext = createContext();
 
@@ -11,32 +11,28 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme || 'light';
+  });
 
-  // Load theme preference from localStorage on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem('contriverse-theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
     } else {
-      // Default to light mode
-      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
     }
-  }, []);
-
-  // Save theme preference to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('contriverse-theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
+  }, [theme]);
 
   const toggleTheme = () => {
-    setIsDarkMode(prev => !prev);
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
   const value = {
-    isDarkMode,
+    theme,
     toggleTheme,
-    theme: isDarkMode ? 'dark' : 'light'
+    isDark: theme === 'dark'
   };
 
   return (

@@ -21,6 +21,7 @@ const notificationRoutes = require('./routes/notifications');
 const botRoutes = require('./routes/bots');
 const githubReadmeRoutes = require('./routes/github-readme');
 const achievementTrackingRoutes = require('./routes/achievement-tracking');
+const ratingRoutes = require('./routes/ratings');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -31,6 +32,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/bots', botRoutes);
 app.use('/api/readme', githubReadmeRoutes);
 app.use('/api/tracking', achievementTrackingRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -60,4 +62,5 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`🔗 GitHub API: http://localhost:${PORT}/api/github/profile/:username`);
+  console.log(`⭐ Rating API: http://localhost:${PORT}/api/ratings`);
 });

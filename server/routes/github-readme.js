@@ -10,15 +10,58 @@ router.get('/stats/:username', optionalAuth, async (req, res) => {
     const { format = 'svg', theme = 'default', show_badges = 'true', show_stats = 'true' } = req.query;
     
     // Find contributor by username
-    const contributor = Array.from(db.contributors.values())
+    let contributor = Array.from(db.contributors.values())
       .find(contrib => contrib.username === username);
     
+    // If contributor doesn't exist, create one from GitHub data
     if (!contributor) {
-      return res.status(404).json({
-        success: false,
-        error: 'Contributor not found',
-        message: 'Contributor does not exist'
-      });
+      try {
+        // Fetch GitHub profile data
+        const axios = require('axios');
+        const githubResponse = await axios.get(`https://api.github.com/users/${username}`, {
+          headers: {
+            'Authorization': `token ${process.env.GITHUB_API_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Contriverse-API'
+          }
+        });
+        
+        const githubProfile = githubResponse.data;
+        
+        // Create contributor from GitHub data
+        contributor = db.createContributor({
+          githubId: githubProfile.id,
+          username: githubProfile.login,
+          name: githubProfile.name || githubProfile.login,
+          avatar: githubProfile.avatar_url,
+          githubUrl: githubProfile.html_url
+        });
+        
+        // Initialize with some basic stats from GitHub
+        db.updateContributorStats(contributor.id, {
+          totalStars: githubProfile.public_repos * 2, // Estimate
+          activeDays: Math.floor((new Date() - new Date(githubProfile.created_at)) / (1000 * 60 * 60 * 24)),
+          joinDate: githubProfile.created_at
+        });
+        
+        // Award some basic badges based on GitHub stats
+        if (githubProfile.public_repos > 0) {
+          db.awardBadge(contributor.id, 'first-pr');
+        }
+        if (githubProfile.public_repos > 10) {
+          db.awardBadge(contributor.id, 'code-warrior');
+        }
+        if (githubProfile.followers > 10) {
+          db.awardBadge(contributor.id, 'issue-solver');
+        }
+        
+      } catch (githubError) {
+        return res.status(404).json({
+          success: false,
+          error: 'GitHub user not found',
+          message: 'User does not exist on GitHub'
+        });
+      }
     }
 
     const badges = contributor.badges
@@ -218,15 +261,58 @@ router.get('/profile/:username', optionalAuth, async (req, res) => {
     const { username } = req.params;
     const { include_stats = 'true' } = req.query;
     
-    const contributor = Array.from(db.contributors.values())
+    let contributor = Array.from(db.contributors.values())
       .find(contrib => contrib.username === username);
     
+    // If contributor doesn't exist, create one from GitHub data
     if (!contributor) {
-      return res.status(404).json({
-        success: false,
-        error: 'Contributor not found',
-        message: 'Contributor does not exist'
-      });
+      try {
+        // Fetch GitHub profile data
+        const axios = require('axios');
+        const githubResponse = await axios.get(`https://api.github.com/users/${username}`, {
+          headers: {
+            'Authorization': `token ${process.env.GITHUB_API_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Contriverse-API'
+          }
+        });
+        
+        const githubProfile = githubResponse.data;
+        
+        // Create contributor from GitHub data
+        contributor = db.createContributor({
+          githubId: githubProfile.id,
+          username: githubProfile.login,
+          name: githubProfile.name || githubProfile.login,
+          avatar: githubProfile.avatar_url,
+          githubUrl: githubProfile.html_url
+        });
+        
+        // Initialize with some basic stats from GitHub
+        db.updateContributorStats(contributor.id, {
+          totalStars: githubProfile.public_repos * 2, // Estimate
+          activeDays: Math.floor((new Date() - new Date(githubProfile.created_at)) / (1000 * 60 * 60 * 24)),
+          joinDate: githubProfile.created_at
+        });
+        
+        // Award some basic badges based on GitHub stats
+        if (githubProfile.public_repos > 0) {
+          db.awardBadge(contributor.id, 'first-pr');
+        }
+        if (githubProfile.public_repos > 10) {
+          db.awardBadge(contributor.id, 'code-warrior');
+        }
+        if (githubProfile.followers > 10) {
+          db.awardBadge(contributor.id, 'issue-solver');
+        }
+        
+      } catch (githubError) {
+        return res.status(404).json({
+          success: false,
+          error: 'GitHub user not found',
+          message: 'User does not exist on GitHub'
+        });
+      }
     }
 
     const badges = contributor.badges
@@ -411,6 +497,140 @@ function generateOrgStatsSVG(organization, stats, leaderboard, theme) {
   
   return svg;
 }
+
+// Sync GitHub user with local database
+router.post('/sync/:username', optionalAuth, async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Fetch comprehensive GitHub data
+    const axios = require('axios');
+    const headers = {
+      'Authorization': `token ${process.env.GITHUB_API_TOKEN}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'Contriverse-API'
+    };
+    
+    // Get user profile
+    const profileResponse = await axios.get(`https://api.github.com/users/${username}`, { headers });
+    const profile = profileResponse.data;
+    
+    // Get user repositories
+    const reposResponse = await axios.get(`https://api.github.com/users/${username}/repos?sort=updated&per_page=100`, { headers });
+    const repos = reposResponse.data;
+    
+    // Get user events for activity
+    const eventsResponse = await axios.get(`https://api.github.com/users/${username}/events/public?per_page=50`, { headers });
+    const events = eventsResponse.data;
+    
+    // Check if contributor already exists
+    let contributor = Array.from(db.contributors.values())
+      .find(contrib => contrib.username === username);
+    
+    if (!contributor) {
+      // Create new contributor
+      contributor = db.createContributor({
+        githubId: profile.id,
+        username: profile.login,
+        name: profile.name || profile.login,
+        avatar: profile.avatar_url,
+        githubUrl: profile.html_url
+      });
+    }
+    
+    // Calculate comprehensive stats
+    const totalStars = repos.reduce((sum, repo) => sum + repo.stargazers_count, 0);
+    const totalForks = repos.reduce((sum, repo) => sum + repo.forks_count, 0);
+    const activeDays = Math.floor((new Date() - new Date(profile.created_at)) / (1000 * 60 * 60 * 24));
+    
+    // Count PRs and issues from events
+    const prEvents = events.filter(event => event.type === 'PullRequestEvent' && event.payload.action === 'closed');
+    const issueEvents = events.filter(event => event.type === 'IssuesEvent' && event.payload.action === 'closed');
+    
+    // Update contributor stats
+    db.updateContributorStats(contributor.id, {
+      totalPRs: prEvents.length,
+      totalIssues: issueEvents.length,
+      totalStars,
+      totalCommits: events.filter(e => e.type === 'PushEvent').length,
+      activeDays,
+      joinDate: profile.created_at,
+      lastActive: profile.updated_at
+    });
+    
+    // Award badges based on comprehensive stats
+    if (profile.public_repos > 0) {
+      db.awardBadge(contributor.id, 'first-pr');
+    }
+    if (prEvents.length >= 10) {
+      db.awardBadge(contributor.id, 'code-warrior');
+    }
+    if (issueEvents.length >= 5) {
+      db.awardBadge(contributor.id, 'issue-solver');
+    }
+    if (profile.public_repos >= 25) {
+      db.awardBadge(contributor.id, 'pr-champion');
+    }
+    
+    // Get updated contributor data
+    const updatedContributor = db.getContributor(contributor.id);
+    const badges = updatedContributor.badges
+      .map(badgeId => db.badges.get(badgeId))
+      .filter(Boolean);
+    
+    const achievements = db.getContributorAchievements(contributor.id);
+    
+    res.json({
+      success: true,
+      message: 'GitHub data synced successfully',
+      data: {
+        contributor: {
+          id: updatedContributor.id,
+          username: updatedContributor.username,
+          name: updatedContributor.name,
+          avatar: updatedContributor.avatar,
+          githubUrl: updatedContributor.githubUrl
+        },
+        stats: updatedContributor.stats,
+        badges: badges.map(badge => ({
+          id: badge.id,
+          name: badge.name,
+          description: badge.description,
+          icon: badge.icon,
+          color: badge.color,
+          points: badge.points
+        })),
+        achievements: achievements.map(achievement => ({
+          id: achievement.id,
+          type: achievement.type,
+          title: achievement.title,
+          description: achievement.description,
+          points: achievement.points,
+          createdAt: achievement.createdAt
+        })),
+        githubData: {
+          profile,
+          reposCount: repos.length,
+          totalStars,
+          totalForks,
+          recentActivity: events.slice(0, 10).map(event => ({
+            type: event.type,
+            repo: event.repo.name,
+            createdAt: event.created_at
+          }))
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('GitHub Sync Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync GitHub data',
+      message: error.response?.data?.message || error.message
+    });
+  }
+});
 
 module.exports = router;
 
