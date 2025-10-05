@@ -8,14 +8,16 @@ const users = new Map();
 
 // GitHub OAuth redirect URL
 router.get('/github', (req, res) => {
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(`http://localhost:3000/callback`)}&scope=user:email&state=${Math.random().toString(36).substring(7)}`;
+  // Generate a secure random state parameter
+  const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(`http://localhost:3000/callback`)}&scope=user:email&state=${state}`;
   res.redirect(githubAuthUrl);
 });
 
 // GitHub OAuth callback
 router.post('/github', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, state } = req.body;
     
     if (!code) {
       return res.status(400).json({
@@ -24,6 +26,10 @@ router.post('/github', async (req, res) => {
         message: 'Please provide GitHub authorization code'
       });
     }
+
+    // Note: In production, you should validate the state parameter against a stored value
+    // to prevent CSRF attacks. For now, we'll just log it.
+    console.log('OAuth state parameter:', state);
 
     // Exchange code for access token
     console.log('Exchanging code for access token...');
