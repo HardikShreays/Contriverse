@@ -10,7 +10,7 @@ const users = new Map();
 router.get('/github', (req, res) => {
   // Generate a secure random state parameter
   const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(`http://localhost:3000/callback`)}&scope=user:email&state=${state}`;
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(`${process.env.FRONTEND_URL}/callback`)}&scope=user:email&state=${state}`;
   res.redirect(githubAuthUrl);
 });
 
