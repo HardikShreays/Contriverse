@@ -50,7 +50,7 @@ const LoginPage = () => {
           <Trophy className="h-12 w-12 text-primary-600" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-          Welcome to Contriverse
+          Welcome to PRAISE
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Sign in with your GitHub account to start your gamified journey

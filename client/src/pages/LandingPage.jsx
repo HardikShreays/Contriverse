@@ -9,7 +9,7 @@ const LandingPage = () => {
         <nav className="flex items-center justify-between p-6 lg:px-8">
           <div className="flex items-center">
             <Trophy className="h-8 w-8 text-primary-600" />
-            <span className="ml-2 text-2xl font-bold text-gray-900">Contriverse</span>
+            <span className="ml-2 text-2xl font-bold text-gray-900">PRAISE</span>
           </div>
           <div className="flex items-center space-x-4">
             <Link
@@ -155,7 +155,7 @@ const LandingPage = () => {
               Ready to start your gamified journey?
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-primary-100">
-              Join Contriverse today and transform your open source contributions into an engaging, 
+              Join PRAISE today and transform your open source contributions into an engaging, 
               rewarding experience.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
@@ -186,7 +186,7 @@ const LandingPage = () => {
           </div>
           <div className="mt-8 md:order-1 md:mt-0">
             <p className="text-center text-xs leading-5 text-gray-500">
-              &copy; 2024 Contriverse. All rights reserved.
+              &copy; 2024 PRAISE. All rights reserved.
             </p>
           </div>
         </div>

@@ -3,6 +3,7 @@ const router = express.Router();
 const ratingCalculator = require('../lib/ratingCalculator');
 const db = require('../lib/database');
 const { authenticateToken } = require('../middleware/auth');
+const githubPRService = require('../services/githubPRService');
 
 // Rate a specific PR
 router.post('/rate-pr', authenticateToken, async (req, res) => {
@@ -515,6 +516,100 @@ router.get('/config', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to get configuration',
+      message: error.message
+    });
+  }
+});
+
+// Auto-generate ratings from GitHub PRs
+router.post('/auto-generate/:username', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { githubToken } = req.body; // GitHub token from frontend
+    
+    console.log(`Starting auto-rating generation for user: ${username}`);
+    
+    if (!githubToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'GitHub token required',
+        message: 'GitHub token is required to access private repositories and avoid rate limits'
+      });
+    }
+    
+    // Generate ratings from GitHub PRs using user's token
+    const ratings = await githubPRService.generateRatingsForUser(username, githubToken);
+    
+    // Get updated user rating summary
+    const ratingSummary = githubPRService.getUserRatingSummary(username);
+    
+    res.json({
+      success: true,
+      data: {
+        username,
+        ratingsGenerated: ratings.length,
+        ratingSummary,
+        ratings: ratings.slice(0, 10) // Return first 10 ratings for preview
+      },
+      message: `Successfully generated ${ratings.length} ratings for ${username}`
+    });
+
+  } catch (error) {
+    console.error('Auto-generate ratings error:', error.message);
+    
+    // Handle specific GitHub API errors
+    if (error.response?.status === 403) {
+      return res.status(403).json({
+        success: false,
+        error: 'GitHub API access denied',
+        message: 'Rate limit exceeded or insufficient permissions. Please try again later or check your GitHub token.'
+      });
+    }
+    
+    if (error.response?.status === 401) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid GitHub token',
+        message: 'The provided GitHub token is invalid or expired. Please re-authenticate.'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to auto-generate ratings',
+      message: error.message
+    });
+  }
+});
+
+// Get user's auto-generated rating summary
+router.get('/summary/:username', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    const ratingSummary = githubPRService.getUserRatingSummary(username);
+    
+    if (!ratingSummary) {
+      return res.status(404).json({
+        success: false,
+        error: 'No ratings found',
+        message: `No ratings found for user ${username}. Try auto-generating ratings first.`
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        username,
+        ratingSummary
+      }
+    });
+
+  } catch (error) {
+    console.error('Get rating summary error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get rating summary',
       message: error.message
     });
   }

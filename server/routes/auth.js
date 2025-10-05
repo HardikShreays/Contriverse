@@ -109,7 +109,8 @@ router.post('/github', async (req, res) => {
           name: user.name,
           email: user.email,
           avatar: user.avatar,
-          githubUrl: user.githubUrl
+          githubUrl: user.githubUrl,
+          githubToken: user.githubToken
         },
         accessToken,
         refreshToken,
@@ -208,6 +209,7 @@ router.get('/me', require('../middleware/auth').authenticateToken, (req, res) =>
           email: user.email,
           avatar: user.avatar,
           githubUrl: user.githubUrl,
+          githubToken: user.githubToken,
           createdAt: user.createdAt
         }
       }

@@ -148,6 +148,19 @@ class Database {
     return this.contributors.get(contributorId);
   }
 
+  findContributorByUsername(username) {
+    for (const [id, contributor] of this.contributors.entries()) {
+      if (contributor.username === username) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  setContributor(contributorId, contributor) {
+    this.contributors.set(contributorId, contributor);
+  }
+
   updateContributorStats(contributorId, stats) {
     const contributor = this.contributors.get(contributorId);
     if (contributor) {

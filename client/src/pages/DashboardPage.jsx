@@ -12,23 +12,65 @@ import {
   Activity
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { useAuth } from '../contexts/AuthContext';
+import { useGitHubProfile, useGitHubActivity } from '../hooks/useGitHubData';
+import { useRatingSystem } from '../hooks/useRatingSystem';
+import { calculateStats } from '../utils/githubStatsCalculator';
 
 const DashboardPage = () => {
-  const [stats, setStats] = useState({
-    totalContributions: 1247,
-    streak: 45,
-    level: 8,
-    badges: 23,
-    rank: 12,
-    weeklyContributions: 18
-  });
+  const { user: authUser } = useAuth();
+  
+  // Fetch GitHub profile and activity data
+  const { 
+    stats: githubStats, 
+    topRepositories,
+    loading: profileLoading,
+    error: profileError 
+  } = useGitHubProfile(authUser?.username);
+  
+  const { 
+    activity: githubActivity,
+    loading: activityLoading,
+    error: activityError 
+  } = useGitHubActivity(authUser?.username);
 
-  const [recentActivity, setRecentActivity] = useState([
-    { id: 1, type: 'pr_merged', title: 'Fixed authentication bug', project: 'Contriverse', time: '2 hours ago' },
-    { id: 2, type: 'issue_closed', title: 'Resolved performance issue', project: 'React-App', time: '1 day ago' },
-    { id: 3, type: 'badge_earned', title: 'Code Quality Master', project: 'Achievement', time: '2 days ago' },
-    { id: 4, type: 'pr_merged', title: 'Added dark mode support', project: 'UI-Library', time: '3 days ago' },
-  ]);
+  // Rating system hook
+  const { 
+    ratingSummary,
+    loading: ratingLoading,
+    error: ratingError,
+    hasRatings
+  } = useRatingSystem(authUser?.username);
+
+  // Calculate comprehensive stats from GitHub data including rating data
+  const calculatedStats = calculateStats(githubStats, githubActivity, ratingSummary);
+  
+  // Transform to dashboard format
+  const stats = {
+    totalContributions: calculatedStats.totalContributions,
+    streak: calculatedStats.streak,
+    level: calculatedStats.level,
+    badges: calculatedStats.badges,
+    rank: calculatedStats.rank,
+    weeklyContributions: Math.floor(calculatedStats.totalContributions / 52), // Rough estimate
+    totalRepos: calculatedStats.projects,
+    followers: calculatedStats.followers,
+    following: calculatedStats.following,
+    contributionScore: calculatedStats.contributionScore,
+    levelProgress: calculatedStats.levelProgress
+  };
+
+  // Transform GitHub activity to dashboard format
+  const recentActivity = githubActivity ? githubActivity.slice(0, 10).map((activity, index) => ({
+    id: index + 1,
+    type: activity.type === 'PushEvent' ? 'commit' : activity.type === 'PullRequestEvent' ? 'pr_merged' : 'issue_closed',
+    title: activity.type === 'PushEvent' ? `Pushed ${activity.payload.commits || 1} commits` : 
+           activity.type === 'PullRequestEvent' ? `Pull request ${activity.payload.action}` :
+           `Issue ${activity.payload.action}`,
+    project: activity.repo.split('/')[1] || 'Unknown',
+    time: new Date(activity.createdAt).toLocaleDateString(),
+    url: activity.url
+  })) : [];
 
   const contributionData = [
     { month: 'Jan', contributions: 45 },
@@ -39,20 +81,63 @@ const DashboardPage = () => {
     { month: 'Jun', contributions: 76 },
   ];
 
-  const projectData = [
-    { name: 'Contriverse', contributions: 45, color: '#3B82F6' },
+  // Use real GitHub repositories for project data
+  const projectData = topRepositories ? topRepositories.slice(0, 5).map((repo, index) => ({
+    name: repo.name,
+    contributions: repo.stars + repo.forks,
+    color: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][index % 5]
+  })) : [
+    { name: 'PRAISE', contributions: 45, color: '#3B82F6' },
     { name: 'React-App', contributions: 32, color: '#10B981' },
     { name: 'UI-Library', contributions: 28, color: '#F59E0B' },
     { name: 'API-Service', contributions: 19, color: '#EF4444' },
   ];
 
-  const achievements = [
+  // Use calculated badges for achievements
+  const achievements = calculatedStats.badgesList ? calculatedStats.badgesList.slice(0, 5) : [
     { id: 1, name: 'First Contribution', description: 'Made your first contribution', earned: true, icon: Star },
     { id: 2, name: 'Code Quality Master', description: 'Maintained 95%+ code quality', earned: true, icon: Award },
     { id: 3, name: 'Team Player', description: 'Collaborated on 10+ PRs', earned: true, icon: Users },
     { id: 4, name: 'Bug Hunter', description: 'Fixed 25+ bugs', earned: false, icon: Target },
     { id: 5, name: 'Streak Master', description: '30-day contribution streak', earned: false, icon: Zap },
   ];
+
+  // Show loading state
+  if (profileLoading || activityLoading || ratingLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <span className="ml-3 text-gray-600">Loading dashboard data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (profileError || activityError || ratingError) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="rounded-full h-12 w-12 bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Dashboard</h3>
+            <p className="text-gray-600 mb-4">{profileError || activityError || ratingError}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="btn-primary"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

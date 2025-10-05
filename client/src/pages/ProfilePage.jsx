@@ -17,45 +17,93 @@ import {
   Bell,
   Shield
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useGitHubProfile, useGitHubActivity } from '../hooks/useGitHubData';
+import { useRatingSystem } from '../hooks/useRatingSystem';
+import { calculateStats } from '../utils/githubStatsCalculator';
 
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditing, setIsEditing] = useState(false);
+  const { user: authUser } = useAuth();
+  
+  // Fetch GitHub profile and activity data
+  const { 
+    profile: githubProfile, 
+    stats: githubStats, 
+    topRepositories,
+    loading: profileLoading,
+    error: profileError 
+  } = useGitHubProfile(authUser?.username);
+  
+  const { 
+    activity: githubActivity,
+    loading: activityLoading,
+    error: activityError 
+  } = useGitHubActivity(authUser?.username);
 
-  const user = {
-    name: 'Demo User',
-    username: 'demo-user',
-    email: 'demo@example.com',
-    location: 'San Francisco, CA',
-    joinDate: 'January 2023',
-    avatar: 'https://avatars.githubusercontent.com/u/1?v=4',
-    bio: 'Passionate open source contributor focused on React, Node.js, and modern web technologies.',
-    githubUrl: 'https://github.com/demo-user',
+  // Rating system hook
+  const { 
+    ratingSummary,
+    loading: ratingLoading,
+    error: ratingError,
+    isGenerating,
+    generateRatings,
+    hasRatings
+  } = useRatingSystem(authUser?.username);
+
+  // Calculate real stats from GitHub data including rating data
+  const calculatedStats = calculateStats(githubStats, githubActivity, ratingSummary);
+  
+  // Use GitHub data if available, fallback to auth user data
+  const user = githubProfile ? {
+    name: githubProfile.name || authUser.name,
+    username: githubProfile.username || authUser.username,
+    email: githubProfile.email || authUser.email,
+    location: githubProfile.location,
+    joinDate: githubProfile.accountCreated ? new Date(githubProfile.accountCreated).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown',
+    avatar: githubProfile.avatar || authUser.avatar,
+    bio: githubProfile.bio,
+    githubUrl: githubProfile.githubUrl || authUser.githubUrl,
+    stats: calculatedStats
+  } : {
+    name: authUser?.name || 'Loading...',
+    username: authUser?.username || 'Loading...',
+    email: authUser?.email || '',
+    location: '',
+    joinDate: '',
+    avatar: authUser?.avatar || '',
+    bio: '',
+    githubUrl: authUser?.githubUrl || '',
     stats: {
-      totalContributions: 1247,
-      streak: 45,
-      level: 8,
-      badges: 23,
-      rank: 12,
-      projects: 12,
-      followers: 89,
-      following: 156
+      contributionScore: 0,
+      level: 1,
+      levelProgress: 0,
+      streak: 0,
+      badges: 0,
+      totalBadges: 0,
+      totalContributions: 0,
+      rank: 0,
+      projects: 0,
+      followers: 0,
+      following: 0
     }
   };
 
-  const badges = [
-    { id: 1, name: 'First Contribution', description: 'Made your first contribution', earned: true, icon: Star, color: 'bg-yellow-100 text-yellow-800' },
-    { id: 2, name: 'Code Quality Master', description: 'Maintained 95%+ code quality', earned: true, icon: Award, color: 'bg-green-100 text-green-800' },
-    { id: 3, name: 'Team Player', description: 'Collaborated on 10+ PRs', earned: true, icon: Users, color: 'bg-blue-100 text-blue-800' },
-    { id: 4, name: 'Bug Hunter', description: 'Fixed 25+ bugs', earned: true, icon: Target, color: 'bg-red-100 text-red-800' },
-    { id: 5, name: 'Streak Master', description: '30-day contribution streak', earned: true, icon: Zap, color: 'bg-purple-100 text-purple-800' },
-    { id: 6, name: 'Open Source Hero', description: '100+ contributions', earned: true, icon: Trophy, color: 'bg-orange-100 text-orange-800' },
-    { id: 7, name: 'Documentation Champion', description: 'Improved project docs', earned: false, icon: Target, color: 'bg-gray-100 text-gray-500' },
-    { id: 8, name: 'Mentor', description: 'Helped 5+ new contributors', earned: false, icon: Users, color: 'bg-gray-100 text-gray-500' },
-  ];
+  // Use calculated badges from stats
+  const badges = calculatedStats.badgesList || [];
 
-  const recentProjects = [
-    { name: 'Contriverse', role: 'Maintainer', contributions: 45, lastActive: '2 days ago' },
+  // Use real GitHub repositories for recent projects
+  const recentProjects = topRepositories ? topRepositories.slice(0, 6).map(repo => ({
+    name: repo.name,
+    role: 'Owner', // GitHub doesn't provide role info, assume owner for user's repos
+    contributions: repo.stars + repo.forks,
+    lastActive: new Date(repo.updatedAt).toLocaleDateString(),
+    url: repo.url,
+    description: repo.description,
+    language: repo.language
+  })) : [
+    { name: 'PRAISE', role: 'Maintainer', contributions: 45, lastActive: '2 days ago' },
     { name: 'React-App', role: 'Contributor', contributions: 32, lastActive: '1 week ago' },
     { name: 'UI-Library', role: 'Contributor', contributions: 28, lastActive: '2 weeks ago' },
     { name: 'API-Service', role: 'Contributor', contributions: 19, lastActive: '3 weeks ago' },
@@ -68,6 +116,43 @@ const ProfilePage = () => {
     { id: 'settings', name: 'Settings', icon: Settings },
   ];
 
+  // Show loading state
+  if (profileLoading || activityLoading || ratingLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <span className="ml-3 text-gray-600">Loading profile data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (profileError || activityError || ratingError) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="rounded-full h-12 w-12 bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Profile</h3>
+            <p className="text-gray-600 mb-4">{profileError || activityError || ratingError}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="btn-primary"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -76,13 +161,29 @@ const ProfilePage = () => {
           <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
           <p className="text-gray-600">Manage your profile and preferences</p>
         </div>
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className="btn-secondary flex items-center space-x-2"
-        >
-          <Edit className="h-4 w-4" />
-          <span>{isEditing ? 'Cancel' : 'Edit Profile'}</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          {!hasRatings && (
+            <button
+              onClick={generateRatings}
+              disabled={isGenerating}
+              className="btn-primary flex items-center space-x-2"
+            >
+              {isGenerating ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Trophy className="h-4 w-4" />
+              )}
+              <span>{isGenerating ? 'Generating...' : 'Generate Ratings'}</span>
+            </button>
+          )}
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className="btn-secondary flex items-center space-x-2"
+          >
+            <Edit className="h-4 w-4" />
+            <span>{isEditing ? 'Cancel' : 'Edit Profile'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -157,6 +258,18 @@ const ProfilePage = () => {
                 <div className="text-2xl font-bold text-orange-600">{user.stats.badges}</div>
                 <div className="text-sm text-gray-600">Badges</div>
               </div>
+              {user.stats.ratingScore > 0 && (
+                <>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">{user.stats.ratingScore}/100</div>
+                    <div className="text-sm text-gray-600">Rating Score</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-indigo-600">{user.stats.totalPRs}</div>
+                    <div className="text-sm text-gray-600">Rated PRs</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -194,7 +307,7 @@ const ProfilePage = () => {
                       <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                         <GitBranch className="h-5 w-5 text-green-600" />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">Merged PR in Contriverse</p>
+                          <p className="text-sm font-medium text-gray-900">Merged PR in PRAISE</p>
                           <p className="text-xs text-gray-500">2 hours ago</p>
                         </div>
                       </div>

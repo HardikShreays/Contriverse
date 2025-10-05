@@ -37,7 +37,7 @@ const Layout = ({ children }) => {
           <div className="flex h-16 items-center justify-between px-4">
             <div className="flex items-center">
               <Trophy className="h-8 w-8 text-primary-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">Contriverse</span>
+              <span className="ml-2 text-xl font-bold text-gray-900">PRAISE</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -53,6 +53,7 @@ const Layout = ({ children }) => {
                 <Link
                   key={item.name}
                   to={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md mb-1 ${
                     isActive(item.href)
                       ? 'bg-primary-100 text-primary-700'
@@ -65,6 +66,30 @@ const Layout = ({ children }) => {
               );
             })}
           </nav>
+          
+          {/* User info in mobile sidebar */}
+          <div className="border-t border-gray-200 px-4 py-4">
+            <div className="flex items-center space-x-3">
+              <img
+                src={user?.avatar || user?.avatar_url || '/default-avatar.png'}
+                alt={user?.username || user?.login || 'User'}
+                className="h-10 w-10 rounded-full"
+                onError={(e) => {
+                  e.target.src = '/default-avatar.png';
+                }}
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">{user?.name || user?.username || user?.login || 'User'}</p>
+                <p className="text-xs text-gray-500">@{user?.username || user?.login || 'user'}</p>
+              </div>
+              <button
+                onClick={logout}
+                className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -73,7 +98,7 @@ const Layout = ({ children }) => {
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
           <div className="flex h-16 items-center px-4">
             <Trophy className="h-8 w-8 text-primary-600" />
-            <span className="ml-2 text-xl font-bold text-gray-900">Contriverse</span>
+            <span className="ml-2 text-xl font-bold text-gray-900">PRAISE</span>
           </div>
           <nav className="flex-1 px-4 py-4">
             {navigation.map((item) => {
@@ -101,14 +126,21 @@ const Layout = ({ children }) => {
       <div className="lg:pl-64">
         {/* Top bar */}
         <div className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white border-b border-gray-200 px-4 lg:px-6">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-600 lg:hidden"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          
           <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="text-gray-500 hover:text-gray-600 lg:hidden"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            
+            {/* Page title for mobile */}
+            <h1 className="text-lg font-semibold text-gray-900 lg:hidden">
+              {navigation.find(item => item.href === location.pathname)?.name || 'PRAISE'}
+            </h1>
+          </div>
+          
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <button
               onClick={toggleTheme}
               className="p-2 text-gray-500 hover:text-gray-600 rounded-md hover:bg-gray-100"
@@ -120,21 +152,30 @@ const Layout = ({ children }) => {
               <Bell className="h-5 w-5" />
             </button>
             
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <img
-                src={user?.avatar_url || '/default-avatar.png'}
-                alt={user?.login}
+                src={user?.avatar || user?.avatar_url || '/default-avatar.png'}
+                alt={user?.username || user?.login || 'User'}
                 className="h-8 w-8 rounded-full"
+                onError={(e) => {
+                  e.target.src = '/default-avatar.png';
+                }}
               />
               <div className="hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{user?.name || user?.login}</p>
-                <p className="text-xs text-gray-500">@{user?.login}</p>
+                <p className="text-sm font-medium text-gray-900 truncate max-w-24">
+                  {user?.name || user?.username || user?.login || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 truncate max-w-24">
+                  @{user?.username || user?.login || 'user'}
+                </p>
               </div>
               <button
                 onClick={logout}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                title="Logout"
               >
-                Logout
+                <span className="hidden sm:inline">Logout</span>
+                <span className="sm:hidden">↪</span>
               </button>
             </div>
           </div>
