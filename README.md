@@ -56,9 +56,10 @@ Contriverse transforms open-source contribution tracking into an engaging, gamif
 - **Node.js** - Runtime environment
 - **Express.js** - Web framework
 - **JavaScript (ES6+)** - Modern JavaScript development
-- **Prisma** - Modern database ORM
-- **PostgreSQL** - Primary database
+- **In-Memory Database** - Custom database implementation (development only)
 - **JWT** - Authentication tokens
+
+> **Note**: The current implementation uses an in-memory database for development purposes. For production deployment, consider migrating to a persistent database like PostgreSQL with Prisma ORM.
 
 ### Integrations
 - **Discord Bot API** - Automated celebrations and notifications
@@ -112,13 +113,9 @@ cp frontend/.env.example frontend/.env
 Configure your environment variables:
 
 ```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/contriverse"
-
 # GitHub OAuth
 GITHUB_CLIENT_ID="your_github_client_id"
 GITHUB_CLIENT_SECRET="your_github_client_secret"
-GITHUB_WEBHOOK_SECRET="your_github_webhook_secret"
 
 # Discord Bot
 DISCORD_BOT_TOKEN="your_discord_bot_token"
@@ -140,14 +137,8 @@ FRONTEND_URL="http://localhost:3000"
 ### 4. Database Setup
 
 ```bash
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate dev
-
-# Seed the database (optional)
-npx prisma db seed
+# Database setup (using in-memory database)
+# No additional setup required - database initializes automatically
 ```
 
 ### 5. Start Development Servers
@@ -306,7 +297,6 @@ docker-compose up -d
 ### Environment Variables (Production)
 
 Ensure all environment variables are properly configured in your production environment, including:
-- Database connection strings
 - OAuth credentials
 - Bot tokens and secrets
 - JWT secrets
@@ -315,7 +305,7 @@ Ensure all environment variables are properly configured in your production envi
 ## 📈 Performance Metrics
 
 - **Response Time**: < 200ms for API endpoints
-- **Database Queries**: Optimized with Prisma ORM
+- **Database Queries**: Optimized in-memory operations
 - **Frontend Bundle**: < 500KB gzipped
 - **Uptime**: 99.9% availability target
 
