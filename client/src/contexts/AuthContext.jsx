@@ -21,7 +21,8 @@ export const AuthProvider = ({ children }) => {
     if (existingToken) {
       // Verify token and get user data
       console.log('Verifying token:', existingToken);
-      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/me`, {
+      const backendBaseUrl = (import.meta.env.VITE_API_URL || (window.__ENV__ && window.__ENV__.BACKEND_URL) || 'http://localhost:3001');
+      axios.get(`${backendBaseUrl}/api/auth/me`, {
         headers: { Authorization: `Bearer ${existingToken}` }
       })
       .then(response => {
@@ -29,9 +30,10 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data.data.user);
       })
       .catch((error) => {
-        console.error('Token verification failed:', error.response?.data || error.message);
+        const errPayload = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+        console.error('Token verification failed:', errPayload);
         // Only clear tokens if it's a 403 (invalid token), not network errors
-        if (error.response?.status === 403) {
+        if (error.response?.status === 403 || error.response?.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
         }
