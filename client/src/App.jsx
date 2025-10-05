@@ -9,6 +9,20 @@ import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ProfilePage from './pages/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
+import { Suspense } from 'react';
+import React from 'react';
+
+function ErrorPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Something went wrong</h1>
+        <p className="text-gray-600 mb-4">We couldn't sign you in. Please try again.</p>
+        <a href="/login" className="text-primary-600 hover:text-primary-700 underline">Back to Login</a>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -19,7 +33,12 @@ function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/callback" element={<AuthCallbackPage />} />
+              <Route path="/callback" element={
+                <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Signing you in…</div>}>
+                  <AuthCallbackPage />
+                </Suspense>
+              } />
+              <Route path="/error" element={<ErrorPage />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <Layout>

@@ -47,8 +47,11 @@ const AuthCallbackPage = () => {
 
         setStatus('Exchanging code for access token...');
 
+        // Resolve backend base URL (supports CRA and Vite)
+        const backendBaseUrl = (process.env.REACT_APP_BACKEND_URL || import.meta.env.VITE_API_URL || (window.__ENV__ && window.__ENV__.BACKEND_URL) || 'http://localhost:3001');
+
         // Send the code and state to your backend
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/github`, {
+        const response = await fetch(`${backendBaseUrl}/api/auth/github`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -75,7 +78,7 @@ const AuthCallbackPage = () => {
           // Redirect to dashboard
           setTimeout(() => {
             navigate('/dashboard');
-          }, 1000);
+          }, 500);
         } else {
           throw new Error(data.message || 'Authentication failed');
         }
@@ -85,8 +88,8 @@ const AuthCallbackPage = () => {
         setError(error.message);
         setStatus(`Authentication failed: ${error.message}`);
         setTimeout(() => {
-          navigate('/login?error=oauth_failed');
-        }, 2000);
+          navigate('/error');
+        }, 1000);
       }
     };
 
