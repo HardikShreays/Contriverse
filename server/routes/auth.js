@@ -40,7 +40,16 @@ router.post('/github', async (req, res) => {
     console.log('GitHub token response status:', tokenResponse.status);
     console.log('GitHub token response data:', tokenResponse.data);
 
-    const { access_token } = tokenResponse.data;
+    const { access_token, error: tokenError } = tokenResponse.data;
+
+    if (tokenError) {
+      console.error('GitHub token error:', tokenError);
+      return res.status(400).json({
+        success: false,
+        error: 'Failed to get access token',
+        message: tokenError === 'bad_verification_code' ? 'Authorization code has expired or already been used' : tokenError
+      });
+    }
 
     if (!access_token) {
       return res.status(400).json({
@@ -51,9 +60,10 @@ router.post('/github', async (req, res) => {
     }
 
     // Get user info from GitHub
+    console.log('Fetching user info from GitHub with token:', access_token.substring(0, 10) + '...');
     const userResponse = await axios.get('https://api.github.com/user', {
       headers: {
-        'Authorization': `token ${access_token}`,
+        'Authorization': `Bearer ${access_token}`,
         'Accept': 'application/vnd.github.v3+json'
       }
     });

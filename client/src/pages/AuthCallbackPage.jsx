@@ -6,8 +6,11 @@ const AuthCallbackPage = () => {
   const [status, setStatus] = useState('Processing authentication...');
   const navigate = useNavigate();
   const { setAuthUser } = useAuth();
+  const [hasProcessed, setHasProcessed] = useState(false);
 
   useEffect(() => {
+    if (hasProcessed) return; // Prevent double execution in React StrictMode
+    
     const handleCallback = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -36,6 +39,7 @@ const AuthCallbackPage = () => {
           return;
         }
 
+        setHasProcessed(true); // Mark as processed to prevent double execution
         setStatus('Exchanging code for access token...');
 
         // Send the code to your backend
@@ -81,7 +85,7 @@ const AuthCallbackPage = () => {
     };
 
     handleCallback();
-  }, [navigate, setAuthUser]);
+  }, [navigate, setAuthUser, hasProcessed]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
